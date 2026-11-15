@@ -64,3 +64,10 @@ The assessment graph now constructs Deep Agents Harness instances for the
 Intake Agent and all three review roles. Each role receives its own read-only
 RAG tool. Install the runtime dependencies with `llm_requirements.txt`; the
 repository copy under `libs/deepagents` remains unchanged.
+
+## OCR 输入
+
+`ingestion/ocr.py` 提供 PNG/JPG OCR、扫描版 PDF OCR 和表格截图 OCR。安装
+`ingestion/requirements.txt` 中的 OCR 依赖后，图片和无文本 PDF 会被提取为
+带页码或坐标、置信度和人工复核标记的证据。置信度低于 0.70 的证据会写入
+报告的 `human_review_evidence_ids`。

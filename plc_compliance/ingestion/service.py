@@ -17,6 +17,7 @@ from plc_compliance.ingestion.adapters import (
     SpreadsheetAdapter,
     TextInputAdapter,
 )
+from plc_compliance.ingestion.ocr import ScannedPDFOCRAdapter, TableOCRAdapter
 
 
 class EvidenceNormalizer:
@@ -40,6 +41,7 @@ class EvidenceNormalizer:
                 confidence=max(0.0, min(1.0, fact.confidence)),
                 source_input_id=fact.source_input_id,
                 extraction_method=fact.extraction_method,
+                needs_human_review=fact.confidence < 0.70,
             ))
         return evidence
 
@@ -56,6 +58,8 @@ class EvidenceIngestionService:
             LogAdapter(),
             TextInputAdapter(),
             ContentBlockAdapter(),
+            ScannedPDFOCRAdapter(),
+            TableOCRAdapter(),
             ImageInputAdapter(),
         ]
         self.normalizer = EvidenceNormalizer()
@@ -64,9 +68,9 @@ class EvidenceIngestionService:
         """Extract deterministic facts and normalize them into Evidence."""
         facts: list[ExtractedFact] = []
         for raw_input in raw_inputs:
-            adapter = next((item for item in self.adapters if item.supports(raw_input)), None)
-            if adapter is not None:
-                facts.extend(adapter.extract(raw_input))
+            for adapter in self.adapters:
+                if adapter.supports(raw_input):
+                    facts.extend(adapter.extract(raw_input))
         return self.normalizer.normalize(facts)
 
     @staticmethod

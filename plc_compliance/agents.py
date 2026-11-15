@@ -75,6 +75,7 @@ def build_intake_agent(model: Any, tools: list[Any] | None = None):
             "你是工业控制系统安全项目的多模态证据整理专家。检查输入的图片、文档、表格和文本。"
             "你只能提取和整理证据，不得直接判断合规。提取原子化、可追溯的证据，保留来源和位置，识别缺失证据与冲突，"
             "并输出符合 CaseDossier 结构的 JSON。所有摘要、说明和原因使用中文，保留不确定性。"
+            "对 OCR 置信度低于 0.70 的内容必须放入 missing_evidence 或 conflicts，并明确建议人工复核。"
         ),
     )
 

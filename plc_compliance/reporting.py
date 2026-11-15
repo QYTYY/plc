@@ -16,6 +16,7 @@ def build_report(state: AssessmentState) -> Report:
     """Build a traceable structured report from final assessment state."""
     findings = state.get("rule_findings", [])
     evidence_ids = sorted({item for finding in findings for item in finding.evidence_ids})
+    review_evidence_ids = sorted(item.evidence_id for item in state.get("evidence", []) if item.needs_human_review)
     conclusion = state.get("final_conclusion", "insufficient_evidence")
     risk_level = "high" if conclusion == "non_compliant" else "medium"
     return Report(
@@ -28,6 +29,7 @@ def build_report(state: AssessmentState) -> Report:
         evidence_ids=evidence_ids,
         assessment_id=state.get("assessment").assessment_id if state.get("assessment") else None,
         needs_human_review=bool(state.get("needs_human_review", True)),
+        human_review_evidence_ids=review_evidence_ids,
         discussion_rounds={number: state.get(f"round{number}_opinions", []) for number in (1, 2, 3)},
     )
 

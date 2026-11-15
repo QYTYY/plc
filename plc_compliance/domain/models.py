@@ -42,6 +42,7 @@ class Evidence(BaseModel):
     source_input_id: str | None = None
     extraction_method: str | None = None
     verified_by_human: bool = False
+    needs_human_review: bool = False
 
 
 class CaseDossier(BaseModel):
@@ -119,6 +120,7 @@ class Report(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)
     assessment_id: str | None = None
     needs_human_review: bool = False
+    human_review_evidence_ids: list[str] = Field(default_factory=list)
     discussion_rounds: dict[int, list[AgentOpinion]] = Field(default_factory=dict)
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
