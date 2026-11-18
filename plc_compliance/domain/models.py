@@ -121,6 +121,7 @@ class Report(BaseModel):
     assessment_id: str | None = None
     needs_human_review: bool = False
     human_review_evidence_ids: list[str] = Field(default_factory=list)
+    expert_review: dict[str, object] = Field(default_factory=dict)
     discussion_rounds: dict[int, list[AgentOpinion]] = Field(default_factory=dict)
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -161,3 +162,4 @@ class AssessmentState(TypedDict, total=False):
     report: Report
     report_path: str
     feedback: Feedback
+    review_decision: dict[str, object]

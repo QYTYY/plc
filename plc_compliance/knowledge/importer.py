@@ -12,7 +12,7 @@ from plc_compliance.knowledge.service import KnowledgeService
 class KnowledgeSourceImporter:
     """Scan a directory, load supported files, and index their chunks."""
 
-    _SUPPORTED = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv", ".html", ".htm", ".txt", ".md", ".log"}
+    _SUPPORTED = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv", ".html", ".htm", ".txt", ".md", ".log", ".json"}
 
     def __init__(self, service: KnowledgeService | None = None) -> None:
         self.service = service or KnowledgeService()

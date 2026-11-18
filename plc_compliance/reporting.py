@@ -18,7 +18,7 @@ def build_report(state: AssessmentState) -> Report:
     evidence_ids = sorted({item for finding in findings for item in finding.evidence_ids})
     review_evidence_ids = sorted(item.evidence_id for item in state.get("evidence", []) if item.needs_human_review)
     conclusion = state.get("final_conclusion", "insufficient_evidence")
-    risk_level = "high" if conclusion == "non_compliant" else "medium"
+    risk_level = state['assessment'].risk_level if state.get('assessment') else 'unknown'
     return Report(
         report_id=f"RPT-{uuid4().hex[:10]}",
         title=f"工业控制系统安全评估报告：{state['case_id']}",
@@ -30,6 +30,7 @@ def build_report(state: AssessmentState) -> Report:
         assessment_id=state.get("assessment").assessment_id if state.get("assessment") else None,
         needs_human_review=bool(state.get("needs_human_review", True)),
         human_review_evidence_ids=review_evidence_ids,
+        expert_review=state.get('review_decision', {}),
         discussion_rounds={number: state.get(f"round{number}_opinions", []) for number in (1, 2, 3)},
     )
 

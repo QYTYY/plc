@@ -18,7 +18,8 @@ from plc_compliance.rules import RuleEngine, run_deterministic_rules
 def build_assessment_graph(model: Any = None, knowledge_store: BaselineKnowledgeStore | None = None,
                            knowledge_service: Any = None, recorder_path: str | Path = "knowledge_db/discussion.jsonl",
                            report_dir: str | Path = "knowledge_db/reports", timeout_seconds: float = 90.0,
-                           max_attempts: int = 3):
+                           max_attempts: int = 3, *, checkpointer: Any = None,
+                           human_review: bool = False):
     """Build the LangGraph workflow with RAG, deliberation, persistence and reporting.
 
     ``model`` can be a DeepSeek ChatOpenAI instance. When omitted, an offline
@@ -37,6 +38,8 @@ def build_assessment_graph(model: Any = None, knowledge_store: BaselineKnowledge
         for role in ROLES
     }
     recorder = DeliberationRecorder(recorder_path)
+    if human_review and checkpointer is None:
+        raise ValueError('人工审核流程必须配置持久化检查点。')
 
     intake_agent = build_intake_agent(model) if model is not None else None
 
@@ -82,16 +85,45 @@ def build_assessment_graph(model: Any = None, knowledge_store: BaselineKnowledge
         path = save_report(report, Path(report_dir) / f"{report.report_id}.json")
         return {"report": report, "report_path": str(path)}
 
+    def review_node(state: AssessmentState) -> dict[str, object]:
+        from langgraph.types import interrupt
+        from plc_compliance.management.review import ReviewDecision
+        pending = [item for item in state.get('evidence', []) if item.needs_human_review and not item.verified_by_human]
+        required = bool(state.get('needs_human_review') or pending or state.get('conflicts')
+                        or state.get('missing_evidence') or not state.get('rules')
+                        or any(item.missing_evidence for item in state.get('round3_opinions', [])))
+        if not required:
+            return {}
+        decision = ReviewDecision.model_validate(interrupt({
+            '案件编号': state['case_id'], '结论': state.get('final_conclusion'),
+            '待复核证据': [item.model_dump() for item in pending],
+            '缺失证据': state.get('missing_evidence', []), '冲突': state.get('conflicts', []),
+        }))
+        evidence = [item.model_copy(update={'verified_by_human': True, 'needs_human_review': False})
+                    if item.evidence_id in decision.confirmed_evidence_ids else item for item in state.get('evidence', [])]
+        unresolved = any(item.needs_human_review and not item.verified_by_human for item in evidence)
+        assessment = state['assessment'].model_copy(update={
+            'conclusion': decision.conclusion, 'needs_human_review': unresolved,
+        })
+        return {'assessment': assessment, 'evidence': evidence, 'final_conclusion': decision.conclusion,
+                'needs_human_review': unresolved, 'review_decision': decision.model_dump()}
+
     graph = StateGraph(AssessmentState)
     graph.add_node("intake", intake_node)
     graph.add_node("knowledge", knowledge_node)
     graph.add_node("deterministic_rules", deterministic_node)
     graph.add_node("deliberation", deliberation_node)
     graph.add_node("report", report_node)
+    if human_review:
+        graph.add_node('human_review', review_node)
     graph.add_edge(START, "intake")
     graph.add_edge("intake", "knowledge")
     graph.add_edge("knowledge", "deterministic_rules")
     graph.add_edge("deterministic_rules", "deliberation")
-    graph.add_edge("deliberation", "report")
+    if human_review:
+        graph.add_edge('deliberation', 'human_review')
+        graph.add_edge('human_review', 'report')
+    else:
+        graph.add_edge('deliberation', 'report')
     graph.add_edge("report", END)
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)

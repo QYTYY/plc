@@ -38,6 +38,7 @@ class FileKnowledgeLoader:
         "inspection_samples": "inspection_report",
         "threat_intelligence": "threat",
         "operations": "operations",
+        "risk_frameworks": "standard",
     }
 
     def load(self, path: str | Path, *, document_id: str, knowledge_type: KnowledgeType | None = None) -> KnowledgeDocument:
@@ -84,4 +85,5 @@ class FileKnowledgeLoader:
             ".htm": "text/html",
             ".csv": "text/csv",
             ".log": "text/log",
+            ".json": "application/json",
         }.get(path.suffix.lower(), "text/plain")
